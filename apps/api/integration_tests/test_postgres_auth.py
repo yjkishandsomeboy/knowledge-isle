@@ -37,5 +37,16 @@ def test_authentication_round_trip_on_postgres() -> None:
         assert login_response.status_code == 200
         assert client.get("/api/v1/dashboard").status_code == 200
 
+        knowledge_base_response = client.post(
+            "/api/v1/knowledge-bases",
+            json={
+                "name": "PostgreSQL Integration Isle",
+                "description": "Created against the isolated PostgreSQL container",
+                "defaultLocale": "en-US",
+            },
+        )
+        assert knowledge_base_response.status_code == 201
+        assert client.get("/api/v1/knowledge-bases").json()[0]["name"] == "PostgreSQL Integration Isle"
+
         assert client.post("/api/v1/auth/logout").status_code == 204
         assert client.get("/api/v1/dashboard").status_code == 401
