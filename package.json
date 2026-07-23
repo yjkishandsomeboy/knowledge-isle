@@ -1,0 +1,12 @@
+{
+  "name": "knowledge-isle",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @knowledge-isle/web dev",
+    "build:web": "pnpm --filter @knowledge-isle/web build",
+    "lint:web": "pnpm --filter @knowledge-isle/web lint",
+    "test:web": "pnpm --filter @knowledge-isle/web test",
+    "typecheck:web": "pnpm --filter @knowledge-isle/web typecheck"
+  }
+}

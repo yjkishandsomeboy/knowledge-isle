@@ -1,0 +1,15 @@
+export default {
+  brand: 'Knowledge Isle',
+  eyebrow: 'Private AI knowledge base',
+  title: 'Give every document a clear echo.',
+  description: 'Upload your sources, ask within your own knowledge boundary, and trace every answer back to the original text.',
+  statusLabel: 'System status',
+  checking: 'Connecting to API',
+  online: 'API connected',
+  offline: 'API is not running',
+  foundation: 'Current phase',
+  foundationValue: 'Engineering foundation',
+  scope: 'MVP scope',
+  scopeValue: 'Single admin · Private documents · Bilingual UI',
+  language: '中',
+}

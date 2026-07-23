@@ -1,0 +1,15 @@
+export default {
+  brand: 'Knowledge Isle',
+  eyebrow: '私有 AI 知识库',
+  title: '让每一份资料，都有清晰的回声。',
+  description: '上传文档，在自己的知识边界内提问，并沿着引用回到原文。',
+  statusLabel: '系统状态',
+  checking: '正在连接 API',
+  online: 'API 已连接',
+  offline: 'API 尚未启动',
+  foundation: '当前阶段',
+  foundationValue: '工程基础搭建',
+  scope: 'MVP 范围',
+  scopeValue: '单管理员 · 私有文档 · 双语界面',
+  language: 'EN',
+}
