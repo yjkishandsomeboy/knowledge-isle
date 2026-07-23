@@ -12,6 +12,10 @@ class Settings(BaseSettings):
 
     app_name: str = "Knowledge Isle"
     app_env: str = "development"
+    admin_setup_token: str = "change-me-before-setup"
+    database_url: str = "postgresql+asyncpg://knowledge_isle:knowledge_isle_dev@localhost:5432/knowledge_isle"
+    session_cookie_name: str = "knowledge_isle_session"
+    session_ttl_days: int = 14
     cors_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
 

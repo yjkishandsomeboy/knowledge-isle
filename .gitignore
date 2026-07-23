@@ -16,6 +16,7 @@ coverage/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.test-tmp/
 .mypy_cache/
 .ruff_cache/
 

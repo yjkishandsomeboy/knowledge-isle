@@ -24,6 +24,12 @@ uv sync --all-packages
 docker compose up -d
 ```
 
+Create the database schema:
+
+```bash
+uv run --package knowledge-isle-api alembic -c apps/api/alembic.ini upgrade head
+```
+
 Start the API:
 
 ```bash
@@ -36,6 +42,8 @@ Start the web app in another terminal:
 pnpm dev:web
 ```
 
+On the first visit, the app redirects to `/setup`. Create the sole administrator with the value configured in `ADMIN_SETUP_TOKEN`. After setup succeeds, the initialization endpoint is permanently closed by the database singleton constraint.
+
 Run checks:
 
 ```bash
@@ -45,5 +53,22 @@ pnpm test:web
 uv run --package knowledge-isle-api pytest apps/api/tests
 uv run --package knowledge-isle-api ruff check apps/api
 ```
+
+Run the isolated PostgreSQL integration check without touching another Compose project:
+
+```powershell
+$env:POSTGRES_HOST_PORT = "55432"
+$env:POSTGRES_DB = "knowledge_isle_integration"
+$env:POSTGRES_USER = "knowledge_isle_integration"
+$env:POSTGRES_PASSWORD = "knowledge_isle_integration_only"
+docker compose -p knowledge-isle-integration up -d postgres
+$env:DATABASE_URL = "postgresql+asyncpg://knowledge_isle_integration:knowledge_isle_integration_only@127.0.0.1:55432/knowledge_isle_integration"
+uv run --package knowledge-isle-api alembic -c apps/api/alembic.ini upgrade head
+$env:INTEGRATION_DATABASE_URL = $env:DATABASE_URL
+uv run --package knowledge-isle-api pytest -o addopts="" apps/api/integration_tests/test_postgres_auth.py
+docker compose -p knowledge-isle-integration down -v --remove-orphans
+```
+
+The integration project uses its own Compose project name, network, volume, database, and host port. Never replace the `knowledge-isle-integration` project name with an existing infrastructure project.
 
 Do not commit `.env`, uploaded documents, database data, logs, API keys, or real private test documents.
