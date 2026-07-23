@@ -26,6 +26,11 @@ export const router = createRouter({
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
     },
+    {
+      path: '/app/knowledge-bases/:knowledgeBaseId',
+      name: 'knowledge-base-detail',
+      component: () => import('@/views/KnowledgeBaseDetailView.vue'),
+    },
   ],
 })
 

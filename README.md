@@ -3,6 +3,7 @@
 Knowledge Isle is a private, bilingual AI knowledge base for uploading documents and asking questions with traceable source citations.
 
 The project is currently in its foundation phase. The frozen MVP scope is documented in [`docs/MVP.md`](docs/MVP.md).
+For a concise explanation of the implemented features, technologies, request flow, and study order, see [`docs/LEARNING.md`](docs/LEARNING.md).
 
 ## Stack
 
@@ -16,6 +17,51 @@ The project is currently in its foundation phase. The frozen MVP scope is docume
 ## Local development
 
 Requirements: Node.js 24+, pnpm 11+, uv, and Docker.
+
+### Recommended startup
+
+Run these commands from the repository root. The Compose project only uses the Knowledge Isle services and volumes.
+
+```powershell
+cd D:\front_study\knowledge-isle
+Copy-Item .env.example .env       # first run only; then edit secrets in .env
+pnpm install
+uv sync --all-packages
+docker compose up -d postgres redis minio worker
+uv run --package knowledge-isle-api alembic -c apps/api/alembic.ini upgrade head
+```
+
+Start the API in one terminal:
+
+```powershell
+$env:PYTHONPATH="apps/api/src"
+uv run --package knowledge-isle-api uvicorn knowledge_isle_api.main:app --reload
+```
+
+Start the Vue web app in another terminal:
+
+```powershell
+pnpm dev:web
+```
+
+Open `http://127.0.0.1:5173`. The first visit opens `/setup`; create the sole administrator with the `ADMIN_SETUP_TOKEN` from `.env`.
+
+Check service status and Worker logs with:
+
+```powershell
+docker compose ps
+docker compose logs -f worker
+```
+
+Stop services without deleting data:
+
+```powershell
+docker compose down
+```
+
+Do not use `docker compose down -v` unless you intentionally want to delete the Knowledge Isle PostgreSQL and MinIO volumes.
+
+### Individual startup commands
 
 ```bash
 cp .env.example .env

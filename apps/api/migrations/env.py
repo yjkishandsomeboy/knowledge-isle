@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from knowledge_isle_api.core.config import settings
 from knowledge_isle_api.db.base import Base
-from knowledge_isle_api.models import User, UserSession  # noqa: F401
+from knowledge_isle_api.models import Document, KnowledgeBase, User, UserSession  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

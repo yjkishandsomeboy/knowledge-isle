@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     session_cookie_name: str = "knowledge_isle_session"
     session_ttl_days: int = 14
     cors_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "knowledge_isle"
+    minio_secret_key: str = "knowledge_isle_dev_password"
+    minio_bucket: str = "knowledge-isle-private"
+    minio_secure: bool = False
+    redis_url: str = "redis://localhost:6379/0"
 
 
 @lru_cache

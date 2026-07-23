@@ -47,6 +47,29 @@ services:
       timeout: 5s
       retries: 10
 
+  worker:
+    image: python:3.12-slim
+    working_dir: /app
+    command: >-
+      sh -c "pip install --no-cache-dir uv && uv run --package knowledge-isle-worker
+      celery -A knowledge_isle_worker.celery_app worker --loglevel=INFO"
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app/apps/api/src:/app/apps/worker/src
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-knowledge_isle}:${POSTGRES_PASSWORD:-knowledge_isle_dev}@postgres:5432/${POSTGRES_DB:-knowledge_isle}
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+    volumes:
+      - ./:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:

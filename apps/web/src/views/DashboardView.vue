@@ -112,6 +112,10 @@ async function logout() {
             v-for="(item, index) in knowledgeBases.items"
             :key="item.id"
             class="knowledge-base-card"
+            role="link"
+            tabindex="0"
+            @click="router.push({ name: 'knowledge-base-detail', params: { knowledgeBaseId: item.id } })"
+            @keydown.enter="router.push({ name: 'knowledge-base-detail', params: { knowledgeBaseId: item.id } })"
           >
             <span class="card-index">{{ String(index + 1).padStart(2, '0') }} / ISLAND</span>
             <h3>{{ item.name }}</h3>

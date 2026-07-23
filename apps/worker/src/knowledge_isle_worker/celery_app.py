@@ -27,3 +27,6 @@ celery_app.conf.update(
 @celery_app.task(name="system.ping")
 def ping() -> str:
     return "pong"
+
+
+celery_app.autodiscover_tasks(["knowledge_isle_worker"])

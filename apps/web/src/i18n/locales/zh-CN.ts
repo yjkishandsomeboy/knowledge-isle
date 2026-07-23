@@ -75,4 +75,22 @@ export default {
     noDescription: '还没有描述。',
     documents: '份文档',
   },
+  documents: {
+    eyebrow: '\u79c1\u6709\u6587\u6863\u6863\u6848',
+    title: '\u6587\u6863',
+    back: '\u8fd4\u56de\u603b\u89c8',
+    upload: '\u4e0a\u4f20\u6587\u6863',
+    formats: 'PDF / Markdown / TXT',
+    unsupportedType: '\u4ec5\u652f\u6301 PDF\u3001Markdown \u548c TXT \u6587\u4ef6\u3002',
+    uploadFailed: '\u4e0a\u4f20\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 API \u548c MinIO \u670d\u52a1\u3002',
+    loadFailed: '\u6587\u6863\u8bfb\u53d6\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5\u3002',
+    emptyTitle: '\u8fd9\u5ea7\u5c9b\u6b63\u5728\u7b49\u5f85\u7b2c\u4e00\u4efd\u6765\u6e90\u3002',
+    emptyDescription: '\u4e0a\u4f20\u79c1\u6709\u6587\u6863\uff0c\u5f00\u59cb\u6784\u5efa\u53ef\u68c0\u7d22\u7684\u77e5\u8bc6\u8fb9\u754c\u3002',
+    status: {
+      uploaded: 'Uploaded',
+      processing: 'Processing',
+      processed: 'Ready',
+      failed: 'Failed',
+    },
+  },
 }

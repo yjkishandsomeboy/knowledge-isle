@@ -75,4 +75,22 @@ export default {
     noDescription: 'No description yet.',
     documents: 'documents',
   },
+  documents: {
+    eyebrow: 'Private source archive',
+    title: 'Documents',
+    back: 'Back to overview',
+    upload: 'Upload document',
+    formats: 'PDF · Markdown · TXT',
+    unsupportedType: 'Only PDF, Markdown, and TXT files are supported.',
+    uploadFailed: 'Upload failed. Check the API and MinIO services.',
+    loadFailed: 'Documents could not be loaded. Refresh and try again.',
+    emptyTitle: 'This island is waiting for its first source.',
+    emptyDescription: 'Upload a private document to begin building a searchable knowledge boundary.',
+    status: {
+      uploaded: 'Uploaded',
+      processing: 'Processing',
+      processed: 'Ready',
+      failed: 'Failed',
+    },
+  },
 }
