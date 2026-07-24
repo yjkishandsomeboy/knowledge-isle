@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -103,10 +104,14 @@ class GitHubClient:
         self._run(["issue", "comment", str(issue_number), "--body", body])
 
     def create_pr(self, cwd: Path, *, title: str, body: str, branch: str) -> tuple[int, str]:
-        self._run(
+        output = self._run(
             ["pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", body],
             cwd=cwd,
         )
+        url = output.splitlines()[-1].strip() if output else ""
+        match = re.search(r"/pull/(\d+)/?$", url)
+        if match:
+            return int(match.group(1)), url
         output = self._run(["pr", "view", branch, "--json", "number,url"], cwd=cwd)
         record = json.loads(output)
         return int(record["number"]), str(record["url"])
