@@ -33,6 +33,17 @@ def _find_gh() -> str:
     return str(existing) if existing else "gh"
 
 
+def _find_uv() -> str:
+    return os.getenv("DEV_AGENT_UV_PATH") or shutil.which("uv") or "uv"
+
+
+def _find_pnpm() -> str:
+    configured = os.getenv("DEV_AGENT_PNPM_PATH")
+    if configured:
+        return configured
+    return shutil.which("pnpm.cmd") or shutil.which("pnpm") or "pnpm"
+
+
 @dataclass(frozen=True)
 class AgentSettings:
     repo_root: Path
@@ -41,6 +52,8 @@ class AgentSettings:
     gh_path: str
     github_repo: str
     poll_seconds: int
+    uv_path: str = "uv"
+    pnpm_path: str = "pnpm"
     planner_interval_hours: int = 24
     planner_max_tasks: int = 3
     host: str = "127.0.0.1"
@@ -62,6 +75,8 @@ class AgentSettings:
                 "DEV_AGENT_GITHUB_REPO", "yjkishandsomeboy/knowledge-isle"
             ),
             poll_seconds=int(os.getenv("DEV_AGENT_POLL_SECONDS", "600")),
+            uv_path=_find_uv(),
+            pnpm_path=_find_pnpm(),
             planner_interval_hours=int(
                 os.getenv("DEV_AGENT_PLANNER_INTERVAL_HOURS", "24")
             ),

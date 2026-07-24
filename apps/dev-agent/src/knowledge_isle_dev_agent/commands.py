@@ -18,17 +18,20 @@ def run_command(
     check: bool = True,
     input_text: str | None = None,
 ) -> CommandResult:
-    completed = subprocess.run(
-        args,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        input=input_text,
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            input=input_text,
+            timeout=timeout,
+            check=False,
+        )
+    except FileNotFoundError as error:
+        raise RuntimeError(f"Command not found: {args[0]}") from error
     result = CommandResult(completed.returncode, completed.stdout, completed.stderr)
     if check and result.returncode != 0:
         summary = (result.stderr or result.stdout)[-4000:]

@@ -98,11 +98,17 @@ class DevelopmentAgent:
                 cwd=self.settings.repo_root,
             )
         run_command(
-            ["git", "worktree", "add", "-b", branch, str(path), "origin/main"],
+            ["git", "worktree", "add", "-B", branch, str(path), "origin/main"],
             cwd=self.settings.repo_root,
         )
-        run_command(["uv", "sync", "--all-packages"], cwd=path, timeout=600)
-        run_command(["pnpm", "install", "--frozen-lockfile"], cwd=path, timeout=600)
+        run_command(
+            [self.settings.uv_path, "sync", "--all-packages"], cwd=path, timeout=600
+        )
+        run_command(
+            [self.settings.pnpm_path, "install", "--frozen-lockfile"],
+            cwd=path,
+            timeout=600,
+        )
 
     def _run_codex(self, run_id: int, issue: GitHubIssue, worktree: Path) -> None:
         prompt = f"""完成 GitHub Issue #{issue.number}。
@@ -139,7 +145,12 @@ class DevelopmentAgent:
 
     def _run_quality_gate(self, run_id: int, worktree: Path) -> None:
         for command in QUALITY_COMMANDS:
-            result = run_command(command, cwd=worktree, timeout=600)
+            executable = {
+                "uv": self.settings.uv_path,
+                "pnpm": self.settings.pnpm_path,
+            }.get(command[0], command[0])
+            resolved_command = [executable, *command[1:]]
+            result = run_command(resolved_command, cwd=worktree, timeout=600)
             self.database.add_event(
                 run_id,
                 f"验证通过：{' '.join(command)}",

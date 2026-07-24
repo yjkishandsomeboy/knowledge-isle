@@ -39,3 +39,14 @@ def test_planner_run_and_candidate_are_persisted(tmp_path: Path) -> None:
     assert database.planner_issues_created_in_last_day() == 1
     assert database.latest_planner_run()["issues_created"] == 1  # type: ignore[index]
     assert database.list_planner_candidates()[0]["auto_ready"] == 1
+
+
+def test_blocked_issue_can_reuse_its_run_after_manual_requeue(tmp_path: Path) -> None:
+    database = AgentDatabase(tmp_path / "agent.db")
+    run_id = database.create_run(44, "Retry command")
+    database.update_run(run_id, status="blocked", error="Command not found: pnpm")
+
+    assert not database.issue_seen(44)
+    assert database.create_run(44, "Retry command") == run_id
+    assert database.get_run(run_id)["status"] == "queued"  # type: ignore[index]
+    assert database.get_run(run_id)["error"] is None  # type: ignore[index]

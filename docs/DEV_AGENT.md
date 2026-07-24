@@ -86,11 +86,15 @@ powershell -ExecutionPolicy Bypass -File scripts/dev-agent/uninstall-task.ps1
 
 管理页的 Planner 区域会显示上次审计状态、创建数量、风险等级以及任务是自动开发还是等待批准。手动启动 Planner 前会再次提示它可能创建真实 GitHub Issues。
 
+如果任务因本机工具或网络故障进入 `agent-blocked`，修复原因后在 GitHub 移除 `agent-blocked` 标签并保留 `agent-ready`。Agent 会复用原运行记录重新执行，不会创建重复记录。
+
 可选环境变量：
 
 ```powershell
 $env:DEV_AGENT_PLANNER_INTERVAL_HOURS = "24"
 $env:DEV_AGENT_PLANNER_MAX_TASKS = "3"
+$env:DEV_AGENT_UV_PATH = "C:\Users\你的用户名\.local\bin\uv.exe"
+$env:DEV_AGENT_PNPM_PATH = "D:\Node_js\pnpm.CMD"
 ```
 
 `DEV_AGENT_PLANNER_MAX_TASKS` 在程序内硬限制为最多 3，避免配置错误造成大量 Issues。

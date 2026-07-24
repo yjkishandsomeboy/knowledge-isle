@@ -76,6 +76,19 @@ class AgentDatabase:
     def create_run(self, issue_number: int, title: str) -> int:
         timestamp = now()
         with self.connect() as connection:
+            existing = connection.execute(
+                "SELECT id, status FROM runs WHERE issue_number = ?", (issue_number,)
+            ).fetchone()
+            if existing is not None:
+                if existing["status"] != "blocked":
+                    raise ValueError(f"Issue #{issue_number} already has a run")
+                connection.execute(
+                    "UPDATE runs SET issue_title = ?, status = 'queued', branch = NULL, "
+                    "pr_url = NULL, pr_number = NULL, quality_passed = 0, "
+                    "merge_approved = 0, error = NULL, updated_at = ? WHERE id = ?",
+                    (title, timestamp, existing["id"]),
+                )
+                return int(existing["id"])
             cursor = connection.execute(
                 "INSERT INTO runs(issue_number, issue_title, status, created_at, updated_at) "
                 "VALUES (?, ?, 'queued', ?, ?)",
@@ -123,9 +136,9 @@ class AgentDatabase:
     def issue_seen(self, issue_number: int) -> bool:
         with self.connect() as connection:
             row = connection.execute(
-                "SELECT 1 FROM runs WHERE issue_number = ?", (issue_number,)
+                "SELECT status FROM runs WHERE issue_number = ?", (issue_number,)
             ).fetchone()
-        return row is not None
+        return row is not None and row["status"] != "blocked"
 
     def create_planner_run(self) -> int:
         with self.connect() as connection:
