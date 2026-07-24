@@ -1,4 +1,6 @@
 import json
+import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -7,8 +9,11 @@ import httpx
 from knowledge_isle_api.core.config import settings
 from knowledge_isle_api.services.retrieval import RetrievedEvidence
 
+logger = logging.getLogger("knowledge_isle.ai")
+
 
 async def generate_answer(question: str, evidence: list[RetrievedEvidence]) -> str:
+    started = time.perf_counter()
     if not evidence:
         return "没有在当前知识库中找到足够相关的内容。"
     if not settings.ai_base_url or not settings.ai_api_key:
@@ -38,7 +43,12 @@ async def generate_answer(question: str, evidence: list[RetrievedEvidence]) -> s
             f"{settings.ai_base_url.rstrip('/')}/responses", json=payload, headers=headers
         )
         response.raise_for_status()
-    return _extract_output_text(response.json())
+    answer = _extract_output_text(response.json())
+    logger.info(
+        "answer_complete provider=responses duration_ms=%.2f",
+        (time.perf_counter() - started) * 1000,
+    )
+    return answer
 
 
 async def stream_answer(
@@ -66,6 +76,7 @@ async def stream_answer(
         ],
     }
     headers = {"Authorization": f"Bearer {settings.ai_api_key}"}
+    started = time.perf_counter()
     async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client, client.stream(
             "POST", f"{settings.ai_base_url.rstrip('/')}/responses", json=payload, headers=headers
         ) as response:
@@ -83,6 +94,10 @@ async def stream_answer(
                 delta = event.get("delta")
                 if event.get("type") == "response.output_text.delta" and isinstance(delta, str):
                     yield delta
+    logger.info(
+        "answer_stream_complete provider=responses duration_ms=%.2f",
+        (time.perf_counter() - started) * 1000,
+    )
 
 
 def _extract_output_text(body: dict[str, Any]) -> str:

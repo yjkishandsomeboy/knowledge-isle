@@ -1,5 +1,7 @@
 import asyncio
+import logging
 import re
+import time
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -8,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from knowledge_isle_api.models.document import Document
 from knowledge_isle_api.models.document_chunk import DocumentChunk
 from knowledge_isle_api.services.embeddings import embed_texts
+
+logger = logging.getLogger("knowledge_isle.retrieval")
 
 
 @dataclass(frozen=True)
@@ -32,6 +36,7 @@ async def retrieve_evidence(
     question: str,
     limit: int = 6,
 ) -> list[RetrievedEvidence]:
+    started = time.perf_counter()
     rows = list(await session.execute(
         select(Document, DocumentChunk)
         .outerjoin(DocumentChunk, DocumentChunk.document_id == Document.id)
@@ -53,7 +58,15 @@ async def retrieve_evidence(
         existing = merged.get(key)
         if existing is None or item.score > existing.score:
             merged[key] = item
-    return sorted(merged.values(), key=lambda item: item.score, reverse=True)[:limit]
+    evidence = sorted(merged.values(), key=lambda item: item.score, reverse=True)[:limit]
+    logger.info(
+        "retrieval_complete knowledge_base_id=%s candidates=%d returned=%d duration_ms=%.2f",
+        knowledge_base_id,
+        len(documents),
+        len(evidence),
+        (time.perf_counter() - started) * 1000,
+    )
+    return evidence
 
 
 async def _semantic_search(

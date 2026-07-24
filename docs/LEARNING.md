@@ -14,6 +14,7 @@
 - 向量检索基础：可选调用 Embeddings API，为切片保存向量并进行余弦相似度召回；默认关闭，不影响关键词检索。
 - SSE 流式问答：Responses API 的增量文本通过 `event: delta` 返回，结束事件携带会话和引用元数据。
 - 离线评估：`evals/retrieval.jsonl` 保存脱敏样例，脚本计算 Recall@K、Precision@5 和 MRR，不调用外部 AI。
+- 可观测性：API 统一记录 `X-Request-ID`、HTTP 总耗时、检索耗时和 AI 调用耗时，便于定位慢请求。
 
 ## 一次上传的链路
 

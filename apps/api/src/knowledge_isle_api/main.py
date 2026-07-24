@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from knowledge_isle_api.api.router import api_router
 from knowledge_isle_api.core.config import settings
+from knowledge_isle_api.core.observability import request_metrics_middleware
 
 
 @asynccontextmanager
@@ -28,4 +29,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(request_metrics_middleware)
 app.include_router(api_router, prefix="/api/v1")
