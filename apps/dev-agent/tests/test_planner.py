@@ -35,6 +35,13 @@ def task(**changes: object) -> PlannerTask:
         (task(category="auth", title="修改登录权限"), ("high", False)),
         (task(category="deployment", title="更新生产部署"), ("high", False)),
         (task(category="dependency", title="升级 Vue"), ("medium", False)),
+        (
+            task(
+                category="tests",
+                constraints=["不修改数据库结构", "不读取 Token"],
+            ),
+            ("low", True),
+        ),
     ],
 )
 def test_risk_is_recalculated_by_local_policy(

@@ -89,9 +89,7 @@ def task_fingerprint(task: PlannerTask) -> str:
 
 
 def classify_task(task: PlannerTask) -> tuple[str, bool]:
-    searchable = " ".join(
-        [task.title, task.summary, *task.constraints, *task.acceptance_criteria]
-    ).casefold()
+    searchable = f"{task.title} {task.summary}".casefold()
     if task.category in HIGH_CATEGORIES or any(term in searchable for term in DANGEROUS_TERMS):
         return "high", False
     if task.category in MEDIUM_CATEGORIES or task.risk in {"medium", "high"}:
