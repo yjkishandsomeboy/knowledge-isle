@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -22,17 +22,47 @@ const loadError = ref(false)
 const uploadError = ref('')
 const question = ref('')
 const chatError = ref(false)
+const documentRefreshInterval = 2_000
+let documentRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let mounted = true
 
 const knowledgeBaseId = computed(() => String(route.params.knowledgeBaseId))
 const knowledgeBase = computed(() => knowledgeBases.items.find((item) => item.id === knowledgeBaseId.value))
+
+function stopDocumentRefresh() {
+  if (documentRefreshTimer === null) return
+  clearTimeout(documentRefreshTimer)
+  documentRefreshTimer = null
+}
+
+function scheduleDocumentRefresh() {
+  if (!mounted || documentRefreshTimer !== null) return
+  if (!documents.items.some((document) => document.status === 'processing')) return
+
+  documentRefreshTimer = setTimeout(async () => {
+    documentRefreshTimer = null
+    try {
+      await documents.load(knowledgeBaseId.value, false)
+    } catch {
+      // Keep the currently displayed documents and retry while processing continues.
+    }
+    scheduleDocumentRefresh()
+  }, documentRefreshInterval)
+}
 
 onMounted(async () => {
   try {
     if (!knowledgeBases.loaded) await knowledgeBases.load()
     await documents.load(knowledgeBaseId.value)
+    scheduleDocumentRefresh()
   } catch {
     loadError.value = true
   }
+})
+
+onUnmounted(() => {
+  mounted = false
+  stopDocumentRefresh()
 })
 
 function chooseFile() {
@@ -47,6 +77,7 @@ async function uploadFile(event: Event) {
   uploadError.value = ''
   try {
     await documents.upload(knowledgeBaseId.value, file)
+    scheduleDocumentRefresh()
   } catch (error) {
     uploadError.value = error instanceof ApiError && error.status === 415
       ? 'documents.unsupportedType'
