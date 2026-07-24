@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/http'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '@/stores/chat'
 import { useDocumentsStore } from '@/stores/documents'
 import { useKnowledgeBasesStore } from '@/stores/knowledgeBases'
 
@@ -13,11 +14,14 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const chat = useChatStore()
 const knowledgeBases = useKnowledgeBasesStore()
 const documents = useDocumentsStore()
 const fileInput = ref<HTMLInputElement | null>(null)
 const loadError = ref(false)
 const uploadError = ref('')
+const question = ref('')
+const chatError = ref(false)
 
 const knowledgeBaseId = computed(() => String(route.params.knowledgeBaseId))
 const knowledgeBase = computed(() => knowledgeBases.items.find((item) => item.id === knowledgeBaseId.value))
@@ -53,6 +57,17 @@ async function uploadFile(event: Event) {
 async function logout() {
   await auth.logout()
   await router.push({ name: 'login' })
+}
+
+async function askQuestion() {
+  if (!question.value.trim()) return
+  chatError.value = false
+  try {
+    await chat.ask(knowledgeBaseId.value, question.value.trim())
+    question.value = ''
+  } catch {
+    chatError.value = true
+  }
 }
 
 function formatSize(size: number) {
@@ -134,6 +149,36 @@ function formatDate(value: string) {
           <h2>{{ t('documents.emptyTitle') }}</h2>
           <p>{{ t('documents.emptyDescription') }}</p>
         </div>
+
+        <section class="chat-panel">
+          <header>
+            <span class="empty-index">CONCURRENT ANSWER / 001</span>
+            <h2>{{ t('chat.title') }}</h2>
+            <p>{{ t('chat.description') }}</p>
+          </header>
+          <form class="chat-form" @submit.prevent="askQuestion">
+            <textarea
+              v-model="question"
+              :placeholder="t('chat.placeholder')"
+              rows="3"
+              maxlength="4000"
+            />
+            <button class="primary-action compact-action" type="submit" :disabled="chat.asking || !question.trim()">
+              <span>{{ chat.asking ? t('chat.thinking') : t('chat.submit') }}</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+          </form>
+          <p v-if="chatError" class="form-error" role="alert">{{ t('chat.failed') }}</p>
+          <article v-if="chat.answer" class="answer-panel">
+            <div class="answer-copy">{{ chat.answer.answer }}</div>
+            <ol v-if="chat.answer.citations.length" class="citation-list">
+              <li v-for="citation in chat.answer.citations" :key="`${chat.answer.messageId}-${citation.rank}`">
+                <strong>[{{ citation.rank }}] {{ citation.filename }}</strong>
+                <p>{{ citation.snippet }}</p>
+              </li>
+            </ol>
+          </article>
+        </section>
       </div>
     </section>
   </main>

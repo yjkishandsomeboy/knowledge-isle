@@ -873,6 +873,78 @@ footer {
   line-height: 1.65;
 }
 
+.chat-panel {
+  margin-top: 96px;
+  padding-top: 34px;
+  border-top: 2px solid var(--ink);
+}
+
+.chat-panel header h2 {
+  margin: 0;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Songti SC', serif;
+  font-size: clamp(2.4rem, 4vw, 4rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.chat-panel header p {
+  max-width: 680px;
+  margin: 18px 0 0;
+  color: var(--moss);
+  line-height: 1.6;
+}
+
+.chat-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 32px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.chat-form textarea {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  outline: none;
+  color: var(--ink);
+  background: rgba(236, 241, 234, 0.58);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.chat-form textarea:focus { border-color: var(--signal); }
+.chat-form .compact-action { min-width: 210px; }
+
+.answer-panel {
+  margin-top: 28px;
+  padding: clamp(24px, 4vw, 42px);
+  border: 1px solid var(--line);
+  background: rgba(236, 241, 234, 0.72);
+}
+
+.answer-copy {
+  white-space: pre-wrap;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Songti SC', serif;
+  font-size: 1.18rem;
+  line-height: 1.8;
+}
+
+.citation-list {
+  display: grid;
+  gap: 14px;
+  margin: 32px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.citation-list li { padding-left: 0; }
+.citation-list strong { color: var(--signal); font-size: 0.7rem; }
+.citation-list p { margin: 8px 0 0; color: var(--moss); font-size: 0.72rem; line-height: 1.6; }
+
 @media (max-width: 900px) {
   .auth-stage {
     grid-template-columns: 1fr;
@@ -910,4 +982,6 @@ footer {
   .document-toolbar > div:last-child, .upload-hint { width: 100%; text-align: left; }
   .document-row { grid-template-columns: 34px minmax(0, 1fr); }
   .document-status { grid-column: 2; justify-self: start; }
+  .chat-form { grid-template-columns: 1fr; }
+  .chat-form .compact-action { width: 100%; }
 }

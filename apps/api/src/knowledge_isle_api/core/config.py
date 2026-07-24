@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     minio_bucket: str = "knowledge-isle-private"
     minio_secure: bool = False
     redis_url: str = "redis://localhost:6379/0"
+    ai_base_url: str = ""
+    ai_api_key: str = ""
+    ai_model: str = "gpt-5.6-sol"
+    ai_timeout_seconds: float = 90.0
 
 
 @lru_cache

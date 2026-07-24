@@ -2,9 +2,11 @@ import asyncio
 
 from knowledge_isle_api.db.session import session_factory
 from knowledge_isle_api.models.document import Document
+from knowledge_isle_api.models.document_chunk import DocumentChunk
+from knowledge_isle_api.services.chunking import split_text
 from knowledge_isle_api.services.documents import ALLOWED_CONTENT_TYPES, extract_text
 from knowledge_isle_api.services.storage import storage
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from knowledge_isle_worker.celery_app import celery_app
 
@@ -31,6 +33,18 @@ async def _process_document(document_id: str) -> str:
             return "failed"
         content = storage.get(document.object_key)
         document.extracted_text = extract_text(content, extension)
+        await session.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document.id))
+        session.add_all(
+            DocumentChunk(
+                document_id=document.id,
+                chunk_index=chunk.index,
+                content=chunk.content,
+                start_offset=chunk.start_offset,
+                end_offset=chunk.end_offset,
+                char_count=len(chunk.content),
+            )
+            for chunk in split_text(document.extracted_text)
+        )
         document.status = "processed"
         document.error_message = None
         await session.commit()

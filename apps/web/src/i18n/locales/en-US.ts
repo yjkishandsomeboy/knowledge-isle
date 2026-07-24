@@ -93,4 +93,12 @@ export default {
       failed: 'Failed',
     },
   },
+  chat: {
+    title: 'Ask this knowledge isle',
+    description: 'The question runs through concurrent retrieval paths before one grounded answer is generated.',
+    placeholder: 'Ask a question about the uploaded documents…',
+    submit: 'Ask question',
+    thinking: 'Searching in parallel…',
+    failed: 'The answer could not be generated. Check the API and AI provider configuration.',
+  },
 }

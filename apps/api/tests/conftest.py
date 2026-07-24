@@ -9,7 +9,15 @@ from knowledge_isle_api.core.config import settings
 from knowledge_isle_api.db.base import Base
 from knowledge_isle_api.db.session import get_db_session
 from knowledge_isle_api.main import app
-from knowledge_isle_api.models import Document, KnowledgeBase, User, UserSession  # noqa: F401
+from knowledge_isle_api.models import (  # noqa: F401
+    Citation,
+    Conversation,
+    Document,
+    KnowledgeBase,
+    Message,
+    User,
+    UserSession,
+)
 
 
 @pytest.fixture
