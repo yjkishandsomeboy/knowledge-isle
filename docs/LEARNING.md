@@ -13,6 +13,7 @@
 - 问答 MVP：正文关键词检索和文件名检索并发执行，回答保存会话、消息、切片级引用及字符位置。
 - 向量检索基础：可选调用 Embeddings API，为切片保存向量并进行余弦相似度召回；默认关闭，不影响关键词检索。
 - SSE 流式问答：Responses API 的增量文本通过 `event: delta` 返回，结束事件携带会话和引用元数据。
+- 离线评估：`evals/retrieval.jsonl` 保存脱敏样例，脚本计算 Recall@K、Precision@5 和 MRR，不调用外部 AI。
 
 ## 一次上传的链路
 
@@ -31,6 +32,7 @@ Vue 上传 -> FastAPI 鉴权与校验 -> MinIO 保存原文件
 5. `apps/api/src/knowledge_isle_api/services/retrieval.py`：理解并发召回、评分和引用位置。
 6. `apps/api/src/knowledge_isle_api/services/chat.py`：理解检索结果如何进入 AI 和数据库。
 7. `apps/api/migrations/versions/`：理解数据库结构如何版本化演进。
+8. `apps/api/src/knowledge_isle_api/services/evaluation.py` 和 `scripts/evaluate_retrieval.py`：理解检索质量如何量化。
 
 ## 后续高级化路线
 
@@ -45,6 +47,7 @@ uv run --package knowledge-isle-api ruff check apps/api/src apps/api/tests
 uv run --package knowledge-isle-worker ruff check apps/worker/src
 uv run --package knowledge-isle-api mypy apps/api/src
 uv run --package knowledge-isle-api alembic -c apps/api/alembic.ini upgrade head
+uv run --package knowledge-isle-api python scripts/evaluate_retrieval.py
 pnpm --filter @knowledge-isle/web typecheck
 pnpm --filter @knowledge-isle/web test
 pnpm --filter @knowledge-isle/web build
