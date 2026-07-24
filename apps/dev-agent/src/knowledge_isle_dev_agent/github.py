@@ -35,6 +35,11 @@ class GitHubClient:
             "agent-review": "1D76DB",
             "agent-done": "5319E7",
             "agent-blocked": "D93F0B",
+            "agent-planned": "6F42C1",
+            "agent-needs-approval": "B60205",
+            "risk-low": "0E8A16",
+            "risk-medium": "FBCA04",
+            "risk-high": "D93F0B",
         }
         for name, color in labels.items():
             self._run(
@@ -43,6 +48,20 @@ class GitHubClient:
                     "--description", "Knowledge Isle local Dev Agent workflow",
                 ]
             )
+
+    def open_issue_titles(self) -> set[str]:
+        output = self._run(
+            ["issue", "list", "--state", "open", "--limit", "200", "--json", "title"]
+        )
+        return {str(record["title"]).strip().casefold() for record in json.loads(output or "[]")}
+
+    def create_issue(self, *, title: str, body: str, labels: list[str]) -> tuple[int, str]:
+        args = ["issue", "create", "--title", title, "--body", body]
+        for label in labels:
+            args.extend(["--label", label])
+        url = self._run(args).splitlines()[-1].strip()
+        record = json.loads(self._run(["issue", "view", url, "--json", "number,url"]))
+        return int(record["number"]), str(record["url"])
 
     def ready_issues(self) -> list[GitHubIssue]:
         output = self._run(

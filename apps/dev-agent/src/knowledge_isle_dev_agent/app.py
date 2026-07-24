@@ -9,12 +9,14 @@ from pydantic import BaseModel
 from knowledge_isle_dev_agent.config import AgentSettings
 from knowledge_isle_dev_agent.database import AgentDatabase
 from knowledge_isle_dev_agent.github import GitHubClient
+from knowledge_isle_dev_agent.planner import PlannerAgent
 from knowledge_isle_dev_agent.runner import DevelopmentAgent
 
 settings = AgentSettings.load()
 database = AgentDatabase(settings.data_dir / "agent.db")
 github = GitHubClient(settings.gh_path, settings.github_repo, settings.repo_root)
 agent = DevelopmentAgent(settings, database, github)
+planner = PlannerAgent(settings, database, github, agent.lock)
 poller_task: asyncio.Task[None] | None = None
 github_error: str | None = None
 
@@ -23,7 +25,9 @@ async def poller() -> None:
     global github_error
     while True:
         try:
-            await agent.poll_once()
+            planner_run_id = await planner.start()
+            if planner_run_id is None:
+                await agent.poll_once()
             github_error = None
         except Exception as error:
             github_error = str(error)[-1000:]
@@ -59,6 +63,10 @@ async def dashboard() -> HTMLResponse:
 async def status() -> dict[str, object]:
     return {
         "running": agent.lock.locked(),
+        "plannerRunning": planner.busy,
+        "plannerIntervalHours": settings.planner_interval_hours,
+        "lastPlannerRun": database.latest_planner_run(),
+        "plannerCandidates": database.list_planner_candidates(),
         "pollSeconds": settings.poll_seconds,
         "repo": settings.github_repo,
         "codexPath": str(settings.codex_path),
@@ -77,7 +85,14 @@ async def run_detail(run_id: int) -> dict[str, object]:
 
 @app.post("/api/poll")
 async def poll_now() -> dict[str, int | None]:
+    if planner.busy:
+        return {"runId": None}
     return {"runId": await agent.poll_once()}
+
+
+@app.post("/api/planner/run")
+async def plan_now() -> dict[str, int | None]:
+    return {"runId": await planner.start(force=True)}
 
 
 @app.post("/api/runs/{run_id}/approve")
@@ -110,19 +125,21 @@ DASHBOARD = r"""<!doctype html>
     .shell{min-height:100vh;display:grid;grid-template-columns:280px 1fr;position:relative}.rail{padding:32px 24px;border-right:2px solid var(--ink);display:flex;flex-direction:column;justify-content:space-between;background:#d8d6ca}
     .brand{font:800 27px Georgia,serif;line-height:.9}.brand small{display:block;font:11px monospace;letter-spacing:.22em;margin-top:13px}.lamp{display:flex;align-items:center;gap:9px;font-size:12px}.dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}.dot.live{background:var(--acid);box-shadow:0 0 0 4px rgba(215,255,63,.3)}
     main{padding:34px clamp(24px,5vw,72px)}header{display:flex;justify-content:space-between;align-items:end;border-bottom:2px solid;padding-bottom:24px}h1{font:700 clamp(42px,7vw,92px)/.82 Georgia,serif;margin:0;letter-spacing:-.06em}button{font:700 12px monospace;text-transform:uppercase;letter-spacing:.08em;border:2px solid var(--ink);background:var(--acid);padding:13px 16px;cursor:pointer;box-shadow:4px 4px 0 var(--ink)}button:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
-    .meta{display:flex;gap:24px;margin:18px 0 34px;color:var(--muted);font-size:12px}.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.7fr);gap:24px}.panel{border:2px solid var(--ink);background:rgba(249,248,240,.9)}.panel-title{padding:12px 16px;border-bottom:2px solid;font-size:11px;letter-spacing:.18em;text-transform:uppercase;background:var(--ink);color:white}.runs{min-height:450px}.run{padding:18px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:62px 1fr auto;gap:14px;cursor:pointer}.run:hover{background:var(--acid)}.run strong{font-size:14px}.run p{margin:6px 0 0;color:var(--muted);font-size:11px}.badge{align-self:start;border:1px solid;padding:5px 7px;font-size:10px;text-transform:uppercase}.detail{padding:18px;min-height:450px}.event{border-left:3px solid;padding:0 0 18px 14px;margin-left:4px;font-size:11px}.event time{color:var(--muted);display:block;margin-top:5px}.actions{display:grid;gap:12px;margin-top:25px}.actions button{width:100%}.actions .danger{background:var(--danger);color:white}.empty{padding:34px;color:var(--muted)}input{width:100%;border:2px solid;padding:12px;background:white;font:14px monospace}
+    .meta{display:flex;gap:24px;margin:18px 0 34px;color:var(--muted);font-size:12px}.planner{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:20px;margin-bottom:24px}.planner-copy{display:grid;gap:8px}.planner-stats{display:flex;gap:20px;flex-wrap:wrap;color:var(--muted);font-size:11px}.candidates{display:flex;gap:8px;flex-wrap:wrap}.candidate{border:1px solid;padding:6px 8px;font-size:10px;background:white}.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.7fr);gap:24px}.panel{border:2px solid var(--ink);background:rgba(249,248,240,.9)}.panel-title{padding:12px 16px;border-bottom:2px solid;font-size:11px;letter-spacing:.18em;text-transform:uppercase;background:var(--ink);color:white}.runs{min-height:450px}.run{padding:18px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:62px 1fr auto;gap:14px;cursor:pointer}.run:hover{background:var(--acid)}.run strong{font-size:14px}.run p{margin:6px 0 0;color:var(--muted);font-size:11px}.badge{align-self:start;border:1px solid;padding:5px 7px;font-size:10px;text-transform:uppercase}.detail{padding:18px;min-height:450px}.event{border-left:3px solid;padding:0 0 18px 14px;margin-left:4px;font-size:11px}.event time{color:var(--muted);display:block;margin-top:5px}.actions{display:grid;gap:12px;margin-top:25px}.actions button{width:100%}.actions .danger{background:var(--danger);color:white}.empty{padding:34px;color:var(--muted)}input{width:100%;border:2px solid;padding:12px;background:white;font:14px monospace}
     @media(max-width:850px){.shell{grid-template-columns:1fr}.rail{border-right:0;border-bottom:2px solid;flex-direction:row}.grid{grid-template-columns:1fr}h1{font-size:48px}}
   </style>
 </head>
 <body><div class="shell"><aside class="rail"><div><div class="brand">Knowledge<br>Isle<small>DEV AGENT / LOCAL</small></div></div><div class="lamp"><i class="dot" id="lamp"></i><span id="agent-state">IDLE</span></div></aside>
 <main><header><div><h1>Build<br>control.</h1></div><button onclick="pollNow()">立即检查 Issues</button></header><div class="meta"><span id="repo">REPO / —</span><span id="interval">POLL / —</span><span>BOUND / 127.0.0.1</span></div>
+<section class="panel planner"><div class="planner-copy"><div class="panel-title">Planner / project audit</div><div class="planner-stats"><span id="planner-state">尚未审计</span><span id="planner-next">每 24 小时</span></div><div class="candidates" id="planner-candidates"></div></div><button onclick="planNow()">立即规划下一步</button></section>
 <div class="grid"><section class="panel runs"><div class="panel-title">Execution ledger</div><div id="runs"><div class="empty">正在读取运行记录…</div></div></section><aside class="panel"><div class="panel-title">Run inspection</div><div class="detail" id="detail"><div class="empty">选择一条运行记录查看阶段与审核操作。</div></div></aside></div></main></div>
 <script>
 let current=null;async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts});if(!r.ok){const b=await r.json();throw new Error(b.detail||r.statusText)}return r.json()}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-async function refresh(){const s=await api('/api/status');document.querySelector('#repo').textContent='REPO / '+s.repo;document.querySelector('#interval').textContent='POLL / '+Math.round(s.pollSeconds/60)+' MIN';document.querySelector('#lamp').className='dot '+(s.running?'live':'');document.querySelector('#agent-state').textContent=s.githubError?'GITHUB ERROR':(s.running?'EXECUTING':'IDLE');document.querySelector('#runs').innerHTML=s.githubError?`<div class="empty">GitHub 连接异常：${esc(s.githubError)}</div>`:(s.runs.length?s.runs.map(r=>`<article class="run" onclick="selectRun(${r.id})"><b>#${r.issue_number}</b><div><strong>${esc(r.issue_title)}</strong><p>${esc(r.updated_at)}</p></div><span class="badge">${esc(r.status)}</span></article>`).join(''):'<div class="empty">暂无任务。为 GitHub Issue 添加 agent-ready 标签即可进入队列。</div>');if(current)await selectRun(current,false)}
+async function refresh(){const s=await api('/api/status');const busy=s.running||s.plannerRunning;document.querySelector('#repo').textContent='REPO / '+s.repo;document.querySelector('#interval').textContent='POLL / '+Math.round(s.pollSeconds/60)+' MIN';document.querySelector('#lamp').className='dot '+(busy?'live':'');document.querySelector('#agent-state').textContent=s.githubError?'GITHUB ERROR':(s.plannerRunning?'PLANNING':(s.running?'EXECUTING':'IDLE'));document.querySelector('#planner-next').textContent='每 '+s.plannerIntervalHours+' 小时，最多 3 条';document.querySelector('#planner-state').textContent=s.plannerRunning?'正在只读审计项目':(s.lastPlannerRun?`上次：${s.lastPlannerRun.status} / 创建 ${s.lastPlannerRun.issues_created} 条`:'尚未审计');document.querySelector('#planner-candidates').innerHTML=s.plannerCandidates.slice(0,3).map(c=>`<a class="candidate" target="_blank" href="${esc(c.issue_url)}">#${c.issue_number} · ${esc(c.risk_level)} · ${c.auto_ready?'自动开发':'待批准'}</a>`).join('');document.querySelector('#runs').innerHTML=s.githubError?`<div class="empty">GitHub 连接异常：${esc(s.githubError)}</div>`:(s.runs.length?s.runs.map(r=>`<article class="run" onclick="selectRun(${r.id})"><b>#${r.issue_number}</b><div><strong>${esc(r.issue_title)}</strong><p>${esc(r.updated_at)}</p></div><span class="badge">${esc(r.status)}</span></article>`).join(''):'<div class="empty">暂无任务。Planner 会自动发现低风险任务，也可手动添加 agent-ready。</div>');if(current)await selectRun(current,false)}
 async function selectRun(id,set=true){if(set)current=id;const r=await api('/api/runs/'+id);const events=r.events.map(e=>`<div class="event"><b>${esc(e.message)}</b><time>${esc(e.created_at)}</time></div>`).join('');let actions='';if(r.status==='awaiting_review'){actions=`<div class="actions"><button onclick="approve(${id})">第一步：批准合并</button>${r.merge_approved?`<input id="issue-confirm" placeholder="输入 Issue 编号 #${r.issue_number}"><button class="danger" onclick="mergeRun(${id})">最终确认并合并</button>`:''}</div>`}document.querySelector('#detail').innerHTML=`<h2>#${r.issue_number} ${esc(r.issue_title)}</h2><p class="badge">${esc(r.status)}</p>${r.pr_url?`<p><a target="_blank" href="${esc(r.pr_url)}">打开 Pull Request ↗</a></p>`:''}${r.error?`<pre>${esc(r.error)}</pre>`:''}<hr>${events}${actions}`}
 async function pollNow(){try{const x=await api('/api/poll',{method:'POST'});alert(x.runId?'已领取任务 Run #'+x.runId:'没有新的 agent-ready Issue');await refresh()}catch(e){alert(e.message)}}
+async function planNow(){if(!confirm('Planner 将只读审计项目，并可能创建最多 3 个 GitHub Issues。低风险任务会自动进入开发队列。继续？'))return;try{const x=await api('/api/planner/run',{method:'POST'});alert(x.runId?'已启动 Planner Run #'+x.runId:'Agent 正忙，请稍后再试');await refresh()}catch(e){alert(e.message)}}
 async function approve(id){if(!confirm('确认你已经在 GitHub 审核代码差异与测试结果？'))return;await api(`/api/runs/${id}/approve`,{method:'POST'});await selectRun(id)}
 async function mergeRun(id){const n=Number(document.querySelector('#issue-confirm').value);if(!confirm('最终确认：这将合并 PR 并删除远程分支。继续？'))return;try{await api(`/api/runs/${id}/merge`,{method:'POST',body:JSON.stringify({issue_number:n})});await refresh()}catch(e){alert(e.message)}}
 refresh();setInterval(refresh,5000)

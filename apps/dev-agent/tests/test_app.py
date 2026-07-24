@@ -8,3 +8,11 @@ def test_dashboard_is_bound_to_local_application() -> None:
     assert response.status_code == 200
     assert "Knowledge Isle" in response.text
     assert "Build" in response.text
+    assert "Planner / project audit" in response.text
+
+
+def test_status_exposes_planner_state() -> None:
+    response = TestClient(app).get("/api/status")
+    assert response.status_code == 200
+    assert response.json()["plannerIntervalHours"] == 24
+    assert "plannerCandidates" in response.json()

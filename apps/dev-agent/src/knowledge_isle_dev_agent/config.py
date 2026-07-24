@@ -41,6 +41,8 @@ class AgentSettings:
     gh_path: str
     github_repo: str
     poll_seconds: int
+    planner_interval_hours: int = 24
+    planner_max_tasks: int = 3
     host: str = "127.0.0.1"
     port: int = 8787
 
@@ -60,6 +62,12 @@ class AgentSettings:
                 "DEV_AGENT_GITHUB_REPO", "yjkishandsomeboy/knowledge-isle"
             ),
             poll_seconds=int(os.getenv("DEV_AGENT_POLL_SECONDS", "600")),
+            planner_interval_hours=int(
+                os.getenv("DEV_AGENT_PLANNER_INTERVAL_HOURS", "24")
+            ),
+            planner_max_tasks=min(
+                3, max(1, int(os.getenv("DEV_AGENT_PLANNER_MAX_TASKS", "3")))
+            ),
         )
 
     @property
