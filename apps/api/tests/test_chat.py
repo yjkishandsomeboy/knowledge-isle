@@ -75,3 +75,23 @@ def test_chat_requires_authentication(client: TestClient) -> None:
     )
 
     assert response.status_code == 401
+
+
+def test_stream_chat_returns_deltas_and_done_event(client: TestClient, monkeypatch) -> None:
+    setup_admin(client)
+    knowledge_base = client.post("/api/v1/knowledge-bases", json={"name": "Stream"}).json()
+
+    async def fake_stream(_question, _evidence):
+        yield "第一段"
+        yield "第二段"
+
+    monkeypatch.setattr("knowledge_isle_api.services.chat.stream_answer", fake_stream)
+    response = client.post(
+        f"/api/v1/knowledge-bases/{knowledge_base['id']}/chat/stream",
+        json={"question": "流式测试"},
+    )
+
+    assert response.status_code == 200
+    assert "event: delta" in response.text
+    assert '"text": "第一段"' in response.text
+    assert "event: done" in response.text

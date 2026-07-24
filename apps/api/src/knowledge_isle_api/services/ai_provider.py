@@ -1,3 +1,5 @@
+import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -36,7 +38,51 @@ async def generate_answer(question: str, evidence: list[RetrievedEvidence]) -> s
             f"{settings.ai_base_url.rstrip('/')}/responses", json=payload, headers=headers
         )
         response.raise_for_status()
-        return _extract_output_text(response.json())
+    return _extract_output_text(response.json())
+
+
+async def stream_answer(
+    question: str, evidence: list[RetrievedEvidence]
+) -> AsyncIterator[str]:
+    """Yield output-text deltas from Responses API, with a local fallback."""
+    if not settings.ai_base_url or not settings.ai_api_key:
+        fallback = await generate_answer(question, evidence)
+        for index in range(0, len(fallback), 80):
+            yield fallback[index : index + 80]
+        return
+    context = "\n\n".join(
+        f"[{index}] 文件：{item.filename}\n{item.snippet}"
+        for index, item in enumerate(evidence, 1)
+    )
+    payload = {
+        "model": settings.ai_model,
+        "stream": True,
+        "input": [
+            {
+                "role": "system",
+                "content": "只根据提供的资料回答，并使用 [1] 格式标注引用。",
+            },
+            {"role": "user", "content": f"问题：{question}\n\n资料：\n{context}"},
+        ],
+    }
+    headers = {"Authorization": f"Bearer {settings.ai_api_key}"}
+    async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client, client.stream(
+            "POST", f"{settings.ai_base_url.rstrip('/')}/responses", json=payload, headers=headers
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                value = line[5:].strip()
+                if not value or value == "[DONE]":
+                    continue
+                try:
+                    event = json.loads(value)
+                except json.JSONDecodeError:
+                    continue
+                delta = event.get("delta")
+                if event.get("type") == "response.output_text.delta" and isinstance(delta, str):
+                    yield delta
 
 
 def _extract_output_text(body: dict[str, Any]) -> str:

@@ -63,7 +63,7 @@ async function askQuestion() {
   if (!question.value.trim()) return
   chatError.value = false
   try {
-    await chat.ask(knowledgeBaseId.value, question.value.trim())
+    await chat.askStream(knowledgeBaseId.value, question.value.trim())
     question.value = ''
   } catch {
     chatError.value = true

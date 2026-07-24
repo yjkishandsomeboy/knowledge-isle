@@ -1,5 +1,4 @@
 import asyncio
-import math
 import re
 from dataclasses import dataclass
 
@@ -46,7 +45,7 @@ async def retrieve_evidence(
     lexical, filename, semantic = await asyncio.gather(
         asyncio.to_thread(_lexical_search, documents, question),
         asyncio.to_thread(_filename_search, documents, question),
-        _semantic_search(documents, question),
+        _semantic_search(session, knowledge_base_id, question),
     )
     merged: dict[str, RetrievedEvidence] = {}
     for item in [*lexical, *filename, *semantic]:
@@ -58,48 +57,39 @@ async def retrieve_evidence(
 
 
 async def _semantic_search(
-    documents: list[tuple[Document, DocumentChunk | None]], question: str
+    session: AsyncSession, knowledge_base_id: str, question: str
 ) -> list[RetrievedEvidence]:
     vectors = await embed_texts([question])
     if not vectors or not vectors[0]:
         return []
+    bind = session.bind
+    if bind is None or bind.dialect.name != "postgresql":
+        return []
     query_vector = vectors[0]
-    return await asyncio.to_thread(_cosine_search, documents, query_vector)
-
-
-def _cosine_search(
-    documents: list[tuple[Document, DocumentChunk | None]], query_vector: list[float]
-) -> list[RetrievedEvidence]:
-    results: list[RetrievedEvidence] = []
-    for document, chunk in documents:
-        if chunk is None or not chunk.embedding:
-            continue
-        score = _cosine_similarity(query_vector, chunk.embedding)
-        if score <= 0:
-            continue
-        results.append(
-            RetrievedEvidence(
-                document.id,
-                document.original_filename,
-                chunk.content[:900].strip(),
-                score * 10,
-                chunk.id,
-                chunk.start_offset,
-                chunk.end_offset,
-            )
+    distance = DocumentChunk.embedding.op("<=>")(query_vector).label("distance")
+    rows = await session.execute(
+        select(Document, DocumentChunk, distance)
+        .join(DocumentChunk, DocumentChunk.document_id == Document.id)
+        .where(
+            Document.knowledge_base_id == knowledge_base_id,
+            Document.status == "processed",
+            DocumentChunk.embedding.is_not(None),
         )
-    return results
-
-
-def _cosine_similarity(left: list[float], right: list[float]) -> float:
-    if len(left) != len(right) or not left:
-        return 0.0
-    dot = sum(a * b for a, b in zip(left, right, strict=True))
-    left_norm = math.sqrt(sum(value * value for value in left))
-    right_norm = math.sqrt(sum(value * value for value in right))
-    if left_norm == 0 or right_norm == 0:
-        return 0.0
-    return dot / (left_norm * right_norm)
+        .order_by(distance)
+        .limit(12)
+    )
+    return [
+        RetrievedEvidence(
+            document.id,
+            document.original_filename,
+            chunk.content[:900].strip(),
+            max(0.0, 1.0 - float(distance_value)) * 10,
+            chunk.id,
+            chunk.start_offset,
+            chunk.end_offset,
+        )
+        for document, chunk, distance_value in rows
+    ]
 
 
 def _lexical_search(
