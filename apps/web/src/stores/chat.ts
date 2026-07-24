@@ -7,6 +7,9 @@ export interface ChatCitation {
   filename: string
   snippet: string
   rank: number
+  chunkId: string | null
+  startOffset: number | null
+  endOffset: number | null
 }
 
 export interface ChatAnswer {

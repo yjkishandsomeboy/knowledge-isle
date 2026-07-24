@@ -1,4 +1,5 @@
 import asyncio
+import math
 import re
 from dataclasses import dataclass
 
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from knowledge_isle_api.models.document import Document
 from knowledge_isle_api.models.document_chunk import DocumentChunk
+from knowledge_isle_api.services.embeddings import embed_texts
 
 
 @dataclass(frozen=True)
@@ -41,17 +43,63 @@ async def retrieve_evidence(
         )
     ))
     documents = [(document, chunk) for document, chunk in rows]
-    lexical, filename = await asyncio.gather(
+    lexical, filename, semantic = await asyncio.gather(
         asyncio.to_thread(_lexical_search, documents, question),
         asyncio.to_thread(_filename_search, documents, question),
+        _semantic_search(documents, question),
     )
     merged: dict[str, RetrievedEvidence] = {}
-    for item in [*lexical, *filename]:
+    for item in [*lexical, *filename, *semantic]:
         key = item.chunk_id or item.document_id
         existing = merged.get(key)
         if existing is None or item.score > existing.score:
             merged[key] = item
     return sorted(merged.values(), key=lambda item: item.score, reverse=True)[:limit]
+
+
+async def _semantic_search(
+    documents: list[tuple[Document, DocumentChunk | None]], question: str
+) -> list[RetrievedEvidence]:
+    vectors = await embed_texts([question])
+    if not vectors or not vectors[0]:
+        return []
+    query_vector = vectors[0]
+    return await asyncio.to_thread(_cosine_search, documents, query_vector)
+
+
+def _cosine_search(
+    documents: list[tuple[Document, DocumentChunk | None]], query_vector: list[float]
+) -> list[RetrievedEvidence]:
+    results: list[RetrievedEvidence] = []
+    for document, chunk in documents:
+        if chunk is None or not chunk.embedding:
+            continue
+        score = _cosine_similarity(query_vector, chunk.embedding)
+        if score <= 0:
+            continue
+        results.append(
+            RetrievedEvidence(
+                document.id,
+                document.original_filename,
+                chunk.content[:900].strip(),
+                score * 10,
+                chunk.id,
+                chunk.start_offset,
+                chunk.end_offset,
+            )
+        )
+    return results
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right) or not left:
+        return 0.0
+    dot = sum(a * b for a, b in zip(left, right, strict=True))
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    if left_norm == 0 or right_norm == 0:
+        return 0.0
+    return dot / (left_norm * right_norm)
 
 
 def _lexical_search(

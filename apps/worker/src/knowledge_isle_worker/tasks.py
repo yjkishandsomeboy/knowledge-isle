@@ -5,6 +5,7 @@ from knowledge_isle_api.models.document import Document
 from knowledge_isle_api.models.document_chunk import DocumentChunk
 from knowledge_isle_api.services.chunking import split_text
 from knowledge_isle_api.services.documents import ALLOWED_CONTENT_TYPES, extract_text
+from knowledge_isle_api.services.embeddings import embed_texts
 from knowledge_isle_api.services.storage import storage
 from sqlalchemy import delete, select
 
@@ -34,6 +35,8 @@ async def _process_document(document_id: str) -> str:
         content = storage.get(document.object_key)
         document.extracted_text = extract_text(content, extension)
         await session.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document.id))
+        chunks = split_text(document.extracted_text)
+        embeddings = await embed_texts([chunk.content for chunk in chunks])
         session.add_all(
             DocumentChunk(
                 document_id=document.id,
@@ -42,8 +45,9 @@ async def _process_document(document_id: str) -> str:
                 start_offset=chunk.start_offset,
                 end_offset=chunk.end_offset,
                 char_count=len(chunk.content),
+                embedding=embeddings[index] if embeddings else None,
             )
-            for chunk in split_text(document.extracted_text)
+            for index, chunk in enumerate(chunks)
         )
         document.status = "processed"
         document.error_message = None

@@ -174,6 +174,9 @@ function formatDate(value: string) {
             <ol v-if="chat.answer.citations.length" class="citation-list">
               <li v-for="citation in chat.answer.citations" :key="`${chat.answer.messageId}-${citation.rank}`">
                 <strong>[{{ citation.rank }}] {{ citation.filename }}</strong>
+                <small v-if="citation.startOffset !== null && citation.endOffset !== null">
+                  {{ citation.startOffset }}-{{ citation.endOffset }}
+                </small>
                 <p>{{ citation.snippet }}</p>
               </li>
             </ol>

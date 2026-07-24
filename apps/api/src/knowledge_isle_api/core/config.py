@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     ai_base_url: str = ""
     ai_api_key: str = ""
     ai_model: str = "gpt-5.6-sol"
+    ai_embeddings_enabled: bool = False
+    ai_embedding_model: str = "text-embedding-3-small"
+    ai_embedding_dimensions: int = 1536
     ai_timeout_seconds: float = 90.0
 
 
