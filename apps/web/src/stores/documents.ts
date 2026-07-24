@@ -24,14 +24,14 @@ export const useDocumentsStore = defineStore('documents', {
     uploading: false,
   }),
   actions: {
-    async load(knowledgeBaseId: string) {
-      this.loading = true
+    async load(knowledgeBaseId: string, showLoading = true) {
+      if (showLoading) this.loading = true
       try {
         this.items = await apiRequest<DocumentItem[]>(
           `/knowledge-bases/${knowledgeBaseId}/documents`,
         )
       } finally {
-        this.loading = false
+        if (showLoading) this.loading = false
       }
     },
     async upload(knowledgeBaseId: string, file: File) {
